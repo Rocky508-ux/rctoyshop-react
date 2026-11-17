@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
+import Box from '@mui/material/Box'
 import ScrollToTop from './components/ScrollToTop'
 import RequireAuth from './components/RequireAuth'
 import Header from './components/Header'
+import Footer from './components/Footer'
 import ToastNotification, { type Notification } from './components/ToastNotification'
 import Placeholder from './views/Placeholder'
 import ProductList from './views/ProductList'
@@ -14,6 +16,11 @@ import PrivacyPolicy from './views/PrivacyPolicy'
 import AfterSales from './views/AfterSales'
 import About from './views/About'
 import Register from './views/Register'
+import ShoppingCart from './views/ShoppingCart'
+import Contact from './views/Contact'
+import MemberCenter from './views/MemberCenter'
+import UserManagement from './components/admin/UserManagement'
+import AlertDemo from './views/AlertDemo' // ⚠️ 暫時的教學頁，看完就刪
 
 function App() {
   const [notifications, setNotifications] = useState<Notification[]>([])
@@ -96,7 +103,26 @@ function App() {
     handleNotify(`已將 ${product.name} 加入購物車`)
   }
 
-  // 改數量、移除、清空這三個函式，等 ShoppingCart 頁面轉過來時再加
+  /** change 傳 +1 或 -1。數量最少 1，要歸零請用 handleRemoveFromCart */
+  const handleUpdateQuantity = (productId: string, change: number) => {
+    setCartItems((prev) =>
+      prev.map((item) =>
+        item.id === productId
+          ? { ...item, quantity: Math.max(1, item.quantity + change) }
+          : item,
+      ),
+    )
+  }
+
+  const handleRemoveFromCart = (productId: string) => {
+    setCartItems((prev) => prev.filter((item) => item.id !== productId))
+    handleNotify('已從購物車移除')
+  }
+
+  const handleClearCart = () => {
+    setCartItems([])
+    handleNotify('已清空購物車')
+  }
 
   return (
     <>
@@ -112,22 +138,30 @@ function App() {
       <Routes>
         <Route path="/" element={<ProductList onAddToCart={handleAddToCart} />} />
         <Route path="/about" element={<About />} />
-        <Route path="/contact" element={<Placeholder name="Contact" />} />
+        <Route path="/contact" element={<Contact onNotify={handleNotify} />} />
+        {/* ⚠️ 暫時的教學頁，看完就刪 */}
+        <Route path="/alert-demo" element={<AlertDemo />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/service" element={<AfterSales />} />
         <Route path="/login" element={<Login onNotify={handleNotify} />} />
         <Route path="/register" element={<Register onNotify={handleNotify} />} />
-        <Route path="/cart" element={<Placeholder name="ShoppingCart" />} />
-        <Route path="/product/:id" element={<ProductDetail onAddToCart={handleAddToCart} />} />
-
         <Route
-          path="/profile"
+          path="/cart"
           element={
-            <RequireAuth>
-              <Placeholder name="Profile" />
-            </RequireAuth>
+            <ShoppingCart
+              cartItems={cartItems}
+              onUpdateQuantity={handleUpdateQuantity}
+              onRemove={handleRemoveFromCart}
+              onClear={handleClearCart}
+            />
           }
         />
+        <Route path="/product/:id" element={<ProductDetail onAddToCart={handleAddToCart} />} />
+
+        {/*
+          舊專案的 /profile 已經不轉了 —— 它沒有任何連結指向它（只能手動打網址），
+          內容也只有三行字，功能都在 /member-center。
+        */}
         <Route
           path="/orders"
           element={
@@ -140,19 +174,28 @@ function App() {
           path="/member-center"
           element={
             <RequireAuth>
-              <Placeholder name="MemberCenter" />
+              <MemberCenter onNotify={handleNotify} />
             </RequireAuth>
           }
         />
+        {/*
+          ⚠️ 暫時的：Admin 外殼（側邊選單 + 四個分頁）還沒轉，
+          所以 /admin 先直接顯示用戶管理 —— Header 的「管理者後台」是連到這裡。
+          之後轉完 Admin.tsx 要改回 <Admin />，UserManagement 變成它的一個分頁。
+        */}
         <Route
           path="/admin"
           element={
             <RequireAuth requireAdmin>
-              <Placeholder name="Admin" />
+              <Box sx={{ maxWidth: 1100, mx: 'auto', my: 6, px: 2 }}>
+                <UserManagement onNotify={handleNotify} />
+              </Box>
             </RequireAuth>
           }
         />
       </Routes>
+
+      <Footer />
     </>
   )
 }
